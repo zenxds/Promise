@@ -1,6 +1,8 @@
 /**
  * 一个简单Promise实现
  * Promises/A+规范：https://promisesaplus.com/ http://www.ituring.com.cn/article/66566
+ *
+ * 暂时不支持onFulfilled return then对象，不支持resolve thenable对象
  */
 
 var PENDING = 0
