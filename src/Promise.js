@@ -108,6 +108,10 @@ Promise.prototype = {
 
     'catch': function(onRejected) {
         return this.then(null, onRejected)
+    },
+
+    always: function(onAlways) {
+        return this.then(onAlways, onAlways)
     }
 }
 
