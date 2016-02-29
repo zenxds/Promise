@@ -16,6 +16,20 @@ describe('new Promise', function() {
 
 describe('then', function() {
 
+    it('should call then more than once', function() {
+        var promise = new Promise(function(resolve, reject) {
+            resolve(1)
+        })
+
+        promise.then(function(result) {
+            expect(result).to.equal(1)
+        })
+
+        promise.then(function(result) {
+            expect(result).to.equal(1)
+        })
+    })
+
     it('should pass the result to next promise', function(done) {
         var fun1 = function() {
             return new Promise(function(resolve) {
@@ -99,6 +113,33 @@ describe('Promise.all', function() {
 
         Promise.all(promises).then(function(result) {
             expect(result).to.eql([1, 4, 9])
+            expect(promises.map(function(item) {
+                return item._state
+            })).to.eql([1, 1, 1])
+        })
+    })
+
+    it('should execute in order', function(done) {
+        var result = []
+        var p1 = new Promise(function(resolve) {
+            setTimeout(function() {
+                result.push(1)
+                resolve()
+            }, 100)
+        })
+        var p2 = new Promise(function(resolve) {
+            result.push(2)
+            resolve()
+        })
+        var p3 = new Promise(function(resolve) {
+            setTimeout(function() {
+                result.push(3)
+                resolve()
+            }, 300)
+        })
+        Promise.all([p1, p2, p3]).then(function() {
+            expect(result).to.eql([2, 1, 3])
+            done()
         })
     })
 

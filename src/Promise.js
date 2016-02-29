@@ -1,8 +1,6 @@
 /**
  * 一个简单Promise实现
  * Promises/A+规范：https://promisesaplus.com/ http://www.ituring.com.cn/article/66566
- *
- * 暂时不支持onFulfilled return then对象，不支持resolve thenable对象
  */
 
 var PENDING = 0
@@ -27,6 +25,31 @@ function Promise(executor) {
     }
 }
 
+function wrapper(promise, fn, actionType) {
+    return function(val) {
+        if (isFunction(fn)) {
+            try {
+                var ret = fn(val)
+
+                if (isThenable(ret)) {
+                    ret.then(function(value) {
+                        promise.resolve(value)
+                    }, function(reason) {
+                        promise.reject(reason)
+                    })
+                } else {
+                    // return同步值
+                    promise.resolve(ret)
+                }
+            } catch (e) {
+                promise.reject(e)
+            }
+        } else {
+            promise[actionType](val)
+        }
+    }
+}
+
 Promise.prototype = {
     constructor: Promise,
 
@@ -34,39 +57,8 @@ Promise.prototype = {
         // 返回一个新promise
         var promise = new Promise()
 
-        var onFulfilledWrapper = function(value) {
-            if (isFunction(onFulfilled)) {
-                try {
-                    var ret = onFulfilled(value)
-                    // return thenable
-                    if (isThenable(ret)) {
-                        ret.then(function(val) {
-                            promise.resolve(val)
-                        }, function(reason) {
-                            promise.reject(reason)
-                        })
-                    } else {
-                        // return同步值
-                        promise.resolve(ret)
-                    }
-                } catch (e) {
-                    promise.reject(e)
-                }
-            } else {
-                promise.resolve(value)
-            }
-        }
-        var onRejectedWrapper = function(reason) {
-            if (isFunction(onRejected)) {
-                try {
-                    promise.resolve(onRejected(reason))
-                } catch (e) {
-                    promise.reject(e)
-                }
-            } else {
-                promise.reject(reason)
-            }
-        }
+        var onFulfilledWrapper = wrapper(promise, onFulfilled, 'resolve')
+        var onRejectedWrapper = wrapper(promise, onRejected, 'reject')
 
         if (this._state === FULFILLED) {
             onFulfilledWrapper(this._value)
@@ -91,6 +83,7 @@ Promise.prototype = {
         each(this._onFulfilled, function(onFulfilled) {
             onFulfilled(value)
         })
+        this._onFulfilled = []
     },
 
     reject: function(reason) {
@@ -104,6 +97,7 @@ Promise.prototype = {
         each(this._onRejected, function(onRejected) {
             onRejected(reason)
         })
+        this._onRejected = []
     },
 
     'catch': function(onRejected) {
