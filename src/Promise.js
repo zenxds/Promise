@@ -1,6 +1,6 @@
 /**
- * 一个简单Promise实现
- * Promises/A+规范：https://promisesaplus.com/ http://www.ituring.com.cn/article/66566
+ * Promise A+
+ * https://promisesaplus.com/
  */
 
 var PENDING = 0
@@ -25,26 +25,43 @@ function Promise(executor) {
     }
 }
 
+/**
+ * resolve a promise with value x
+ * https://promisesaplus.com/#point-47
+ */
+function resolve(promise, x) {
+    if (promise === x) {
+        promise.reject(new TypeError('A promise cannot be resolved with itself.'))
+        return
+    }
+
+    if (isThenable(x)) {
+        try {
+            x.then(function(value) {
+                resolve(promise, value)
+            }, function(reason) {
+                promise.reject(reason)
+            })
+        } catch (e) {
+            promise.reject(e)
+        }
+    } else {
+        promise.resolve(x)
+    }
+}
+
 function wrapper(promise, fn, actionType) {
     return function(val) {
         if (isFunction(fn)) {
             try {
-                var ret = fn(val)
-
-                if (isThenable(ret)) {
-                    ret.then(function(value) {
-                        promise.resolve(value)
-                    }, function(reason) {
-                        promise.reject(reason)
-                    })
-                } else {
-                    // return同步值
-                    promise.resolve(ret)
-                }
+                var x = fn(val)
+                resolve(promise, x)
             } catch (e) {
                 promise.reject(e)
             }
         } else {
+            // https://promisesaplus.com/#point-43
+            // val is the _reason or _value of the origin promise
             promise[actionType](val)
         }
     }
@@ -54,7 +71,6 @@ Promise.prototype = {
     constructor: Promise,
 
     then: function(onFulfilled, onRejected) {
-        // 返回一个新promise
         var promise = new Promise()
 
         var onFulfilledWrapper = wrapper(promise, onFulfilled, 'resolve')

@@ -66,6 +66,28 @@ describe('then', function() {
         .then(output)
     })
 
+    it('should be ignore if the onFulfilled or onRejected is not a function', function() {
+        var p1 = new Promise(function(resolve) {
+            resolve(1)
+        })
+        var p2 = p1.then(null, 5)
+        expect(p2._value).to.equal(1)
+    })
+
+    it('should call the thenable', function() {
+        var p1 = Promise.resolve(1)
+        var p2 = p1.then(function() {
+            return {
+                then: function(resolve, reject) {
+                    resolve(2)
+                }
+            }
+        })
+
+        p2.then(function(v) {
+            expect(v).to.equal(2)
+        })
+    })
 })
 
 describe('catch', function() {
