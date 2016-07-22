@@ -66,12 +66,15 @@ describe('then', function() {
         .then(output)
     })
 
-    it('should be ignore if the onFulfilled or onRejected is not a function', function() {
+    it('should be ignore if the onFulfilled or onRejected is not a function', function(done) {
         var p1 = new Promise(function(resolve) {
             resolve(1)
         })
         var p2 = p1.then(null, 5)
-        expect(p2._value).to.equal(1)
+        p2.then(function(v) {
+            expect(v).to.equal(1)
+            done()
+        })
     })
 
     it('should call the thenable', function() {

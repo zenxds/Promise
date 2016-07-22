@@ -73,19 +73,34 @@ Promise.prototype = {
     then: function(onFulfilled, onRejected) {
         var promise = new Promise()
 
-        var onFulfilledWrapper = wrapper(promise, onFulfilled, 'resolve')
-        var onRejectedWrapper = wrapper(promise, onRejected, 'reject')
+        this._onFulfilled.push(wrapper(promise, onFulfilled, 'resolve'))
+        this._onRejected.push(wrapper(promise, onRejected, 'reject'))
 
-        if (this._state === FULFILLED) {
-            onFulfilledWrapper(this._value)
-        } else if (this._state === REJECTED) {
-            onRejectedWrapper(this._reason)
-        } else {
-            this._onFulfilled.push(onFulfilledWrapper)
-            this._onRejected.push(onRejectedWrapper)
+        this.flush()
+        return promise
+    },
+
+    flush: function() {
+        var state = this._state
+
+        if (state === PENDING) {
+            return
         }
 
-        return promise
+        var fns = state === FULFILLED ? this._onFulfilled.slice() : this._onRejected.slice()
+        var arg = state === FULFILLED ? this._value : this._reason
+
+        setTimeout(function() {
+            each(fns, function(fn) {
+                try {
+                    fn(arg)
+                } catch (e) {}
+            })
+        }, 0)
+
+
+        this._onFulfilled = []
+        this._onRejected = []
     },
 
     resolve: function(value) {
@@ -96,10 +111,7 @@ Promise.prototype = {
         this._state = FULFILLED
         this._value = value
 
-        each(this._onFulfilled, function(onFulfilled) {
-            onFulfilled(value)
-        })
-        this._onFulfilled = []
+        this.flush()
     },
 
     reject: function(reason) {
@@ -110,10 +122,19 @@ Promise.prototype = {
         this._state = REJECTED
         this._reason = reason
 
-        each(this._onRejected, function(onRejected) {
-            onRejected(reason)
-        })
-        this._onRejected = []
+        this.flush()
+    },
+
+    isPending: function() {
+        return this._state === PENDING
+    },
+
+    isFulfilled: function() {
+        return this._state === FULFILLED
+    },
+
+    isRejected: function() {
+        return this._state === REJECTED
     },
 
     'catch': function(onRejected) {
