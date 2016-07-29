@@ -5,6 +5,10 @@ var expect = require('expect.js')
 var Promise = require('../index')
 var interval = 300
 
+var PENDING = 0
+var FULFILLED = 1
+var REJECTED = 2
+
 describe('new Promise', function() {
 
     it('should new a Promise if not use keyword new', function() {
@@ -77,7 +81,7 @@ describe('then', function() {
         })
     })
 
-    it('should call the thenable', function() {
+    it('should call the thenable', function(done) {
         var p1 = Promise.resolve(1)
         var p2 = p1.then(function() {
             return {
@@ -90,6 +94,104 @@ describe('then', function() {
         p2.then(function(v) {
             expect(v).to.equal(2)
         })
+
+        p2 = p1.then(function() {
+            return {
+                then: function(resolve, reject) {
+                    reject(2)
+                }
+            }
+        })
+        p2.then(null, function(v) {
+            expect(v).to.equal(2)
+        })
+
+        p2 = p1.then(function() {
+            return {
+                then: function(resolve, reject) {
+                    a.b.c()
+                }
+            }
+        })
+        p2.then(null, function(err) {
+            expect(err).to.be.ok()
+            done()
+        })
+    })
+
+    it('should catch the err', function(done) {
+        var p1 = Promise.resolve(1)
+        var p2 = p1.then(function() {
+            a.b.c()
+        })
+
+        p2.then(null, function() {
+            expect(p2._state).to.equal(REJECTED)
+            done()
+        })
+    })
+
+    it('should reject if the resolve value is promise self', function(done) {
+        var p1 = Promise.resolve()
+        var p2 = p1.then(function() {
+            return p2
+        })
+
+        p2.then(null, function() {
+            expect(p2._reason instanceof TypeError).to.be.ok()
+            done()
+        })
+    })
+})
+
+describe('state', function() {
+    it('should tell is pending', function() {
+        var p = new Promise(function(resolve, reject) {})
+        expect(p.isPending()).to.be(true)
+        expect(p.isFulfilled()).to.be(false)
+        expect(p.isRejected()).to.be(false)
+    })
+
+    it('should tell is fulfilled', function() {
+        var p = new Promise(function(resolve, reject) {
+            resolve()
+        })
+        expect(p.isPending()).to.be(false)
+        expect(p.isFulfilled()).to.be(true)
+        expect(p.isRejected()).to.be(false)
+
+        p.resolve()
+        expect(p.isFulfilled()).to.be(true)
+    })
+
+    it('should tell is rejected', function() {
+        var p = new Promise(function(resolve, reject) {
+            reject()
+        })
+        expect(p.isPending()).to.be(false)
+        expect(p.isFulfilled()).to.be(false)
+        expect(p.isRejected()).to.be(true)
+    })
+})
+
+describe('always', function() {
+    it('should always call the handler', function(done) {
+        var counter = 0
+        var handler = function(val) {
+            expect(val).to.equal(1)
+            counter++
+        }
+
+        var p = Promise.resolve(1)
+        p.always(handler)
+
+        p = Promise.reject(1)
+        p.always(handler)
+
+        setTimeout(function() {
+            expect(counter).to.equal(2)
+            done()
+        }, 10)
     })
 })
 
@@ -190,6 +292,10 @@ describe('Promise.race', function() {
                     resolve(i * i)
                 }, 100 * i)
             })
+        })
+
+        Promise.race([Promise.reject(1), Promise.resolve(2)]).then(null, function(err) {
+            expect(err).to.be(1)
         })
 
         Promise.race(promises).then(function(result) {
