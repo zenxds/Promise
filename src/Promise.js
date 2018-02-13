@@ -144,8 +144,8 @@ Promise.prototype = {
     return this.then(null, onRejected)
   },
 
-  always: function(onAlways) {
-    return this.then(onAlways, onAlways)
+  finally: function(onFinally) {
+    return this.then(onFinally, onFinally)
   }
 }
 

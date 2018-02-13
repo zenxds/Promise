@@ -172,8 +172,8 @@ describe("state", function() {
   })
 })
 
-describe("always", function() {
-  it("should always call the handler", function(done) {
+describe("finally", function() {
+  it("should finally call the handler", function(done) {
     var counter = 0
     var handler = function(val) {
       expect(val).to.equal(1)
@@ -181,10 +181,10 @@ describe("always", function() {
     }
 
     var p = Promise.resolve(1)
-    p.always(handler)
+    p.finally(handler)
 
     p = Promise.reject(1)
-    p.always(handler)
+    p.finally(handler)
 
     setTimeout(function() {
       expect(counter).to.equal(2)
